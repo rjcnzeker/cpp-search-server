@@ -86,18 +86,11 @@ public:
         });
     }
 
-    template<typename Func>
-    vector<Document> FindTopDocuments(const string &raw_query, Func func) const {
+    template<typename Predicat>
+    vector<Document> FindTopDocuments(const string &raw_query, Predicat predicat) const {
         const Query query = ParseQuery(raw_query);
 
-        auto Intermediate = FindAllDocuments(query);
-        vector<Document> matched_documents;
-
-        for (auto doc: Intermediate) {
-            if (func(doc.id, doc.status, doc.rating)) {
-                matched_documents.push_back({doc.id, doc.relevance, doc.rating, doc.status});
-            }
-        }
+        vector<Document> matched_documents = FindAllDocuments(query, predicat);
 
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document &lhs, const Document &rhs) {
@@ -219,7 +212,8 @@ private:
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
 
-    vector<Document> FindAllDocuments(const Query &query) const {
+    template<typename Predicat>
+    vector<Document> FindAllDocuments(const Query &query, Predicat predicat) const {
         map<int, double> document_to_relevance;
 
         for (const string &word: query.plus_words) {
@@ -241,11 +235,19 @@ private:
             }
         }
 
-        vector<Document> matched_documents;
+        vector<Document> intermediate_matched_documents;
         for (const auto[document_id, relevance]: document_to_relevance) {
-            matched_documents.push_back(
+            intermediate_matched_documents.push_back(
                     {document_id, relevance, documents_.at(document_id).rating, documents_.at(document_id).status});
         }
+
+        vector<Document> matched_documents;
+        for (auto doc: intermediate_matched_documents) {
+            if (predicat(doc.id, doc.status, doc.rating)) {
+                matched_documents.push_back({doc.id, doc.relevance, doc.rating, doc.status});
+            }
+        }
+
         return matched_documents;
     }
 };
