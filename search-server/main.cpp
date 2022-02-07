@@ -86,11 +86,11 @@ public:
         });
     }
 
-    template<typename Predicat>
-    vector<Document> FindTopDocuments(const string &raw_query, Predicat predicat) const {
+    template<typename Predicate>
+    vector<Document> FindTopDocuments(const string &raw_query, Predicate predicate) const {
         const Query query = ParseQuery(raw_query);
 
-        vector<Document> matched_documents = FindAllDocuments(query, predicat);
+        vector<Document> matched_documents = FindAllDocuments(query, predicate);
 
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document &lhs, const Document &rhs) {
@@ -212,8 +212,8 @@ private:
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
 
-    template<typename Predicat>
-    vector<Document> FindAllDocuments(const Query &query, Predicat predicat) const {
+    template<typename Predicate>
+    vector<Document> FindAllDocuments(const Query &query, Predicate predicate) const {
         map<int, double> document_to_relevance;
 
         for (const string &word: query.plus_words) {
@@ -222,7 +222,11 @@ private:
             }
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto[document_id, term_freq]: word_to_document_freqs_.at(word)) {
-                document_to_relevance[document_id] += term_freq * inverse_document_freq;
+
+                if (predicate(document_id, documents_.at(document_id).status, documents_.at(document_id).rating)) {
+                    document_to_relevance[document_id] += term_freq * inverse_document_freq;
+                }
+
             }
         }
 
@@ -235,17 +239,10 @@ private:
             }
         }
 
-        vector<Document> intermediate_matched_documents;
-        for (const auto[document_id, relevance]: document_to_relevance) {
-            intermediate_matched_documents.push_back(
-                    {document_id, relevance, documents_.at(document_id).rating, documents_.at(document_id).status});
-        }
-
         vector<Document> matched_documents;
-        for (auto doc: intermediate_matched_documents) {
-            if (predicat(doc.id, doc.status, doc.rating)) {
-                matched_documents.push_back({doc.id, doc.relevance, doc.rating, doc.status});
-            }
+        for (const auto[document_id, relevance]: document_to_relevance) {
+            matched_documents.push_back(
+                    {document_id, relevance, documents_.at(document_id).rating, documents_.at(document_id).status});
         }
 
         return matched_documents;
