@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <numeric>
 
 using namespace std;
 
@@ -75,8 +76,12 @@ enum class DocumentStatus {
     REMOVED,
 };
 
+const float RELEVANCE_ERROR = 1e-6;
+
 class SearchServer {
 public:
+
+
     // Defines an invalid document id
     // You can refer this constant as SearchServer::INVALID_DOCUMENT_ID
     inline static constexpr int INVALID_DOCUMENT_ID = -1;
@@ -87,7 +92,7 @@ public:
     {
         for (const string &word: stop_words_) {
             if (!IsValidWord(word)) {
-                throw invalid_argument("");
+                throw invalid_argument(word);
             }
         }
     }
@@ -97,19 +102,22 @@ public:
     {
         for (const string &word: stop_words_) {
             if (!IsValidWord(word)) {
-                throw invalid_argument("");
+                throw invalid_argument(word);
             }
         }
     }
 
     void AddDocument(int document_id, const string &document, DocumentStatus status,
                      const vector<int> &ratings) {
-        if ((document_id < 0) || (documents_.count(document_id) > 0)) {
-            throw invalid_argument("");
+        if (document_id < 0) {
+            throw invalid_argument("ID не может быть меньше нуля");
+        }
+        if (documents_.count(document_id) > 0) {
+            throw invalid_argument("Документ с таким id не существует");
         }
         vector<string> words;
         if (!SplitIntoWordsNoStop(document, words)) {
-            throw invalid_argument("");
+            throw invalid_argument("Документ содержит спецсимволы");
         }
 
         const double inv_word_count = 1.0 / words.size();
@@ -123,13 +131,12 @@ public:
     template<typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string &raw_query, DocumentPredicate document_predicate) const {
         Query query;
-        if (!ParseQuery(raw_query, query)) {
-            throw invalid_argument("");
-        }
+        ParseQuery(raw_query, query);
+
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
         sort(matched_documents.begin(), matched_documents.end(), [](const Document &lhs, const Document &rhs) {
-            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+            if (abs(lhs.relevance - rhs.relevance) < RELEVANCE_ERROR) {
                 return lhs.rating > rhs.rating;
             } else {
                 return lhs.relevance > rhs.relevance;
@@ -167,9 +174,8 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string &raw_query, int document_id) const {
         Query query;
-        if (!ParseQuery(raw_query, query)) {
-            throw invalid_argument(""s);
-        }
+        ParseQuery(raw_query, query);
+
         vector<string> matched_words;
         for (const string &word: query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -233,9 +239,7 @@ private:
             return 0;
         }
         int rating_sum = 0;
-        for (const int rating: ratings) {
-            rating_sum += rating;
-        }
+        rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
 
@@ -245,10 +249,7 @@ private:
         bool is_stop;
     };
 
-    [[nodiscard]] bool ParseQueryWord(string text, QueryWord &result) const {
-        // Empty result by initializing it with default constructed QueryWord
-        result = {};
-
+    bool ParseQueryWord(string text) const {
         if (text.empty()) {
             return false;
         }
@@ -260,8 +261,6 @@ private:
         if (text.empty() || text[0] == '-' || !IsValidWord(text)) {
             return false;
         }
-
-        result = QueryWord{text, is_minus, IsStopWord(text)};
         return true;
     }
 
@@ -270,17 +269,19 @@ private:
         set<string> minus_words;
     };
 
-    [[nodiscard]] bool ParseQuery(const string &text, Query &result) const {
+    void ParseQuery(const string &text, Query &result) const {
         // Empty result by initializing it with default constructed Query
         result = {};
         for (const string &word: SplitIntoWords(text)) {
             QueryWord query_word;
-            if (!ParseQueryWord(word, query_word)) {
-                return false;
+            if (!ParseQueryWord(word)) {
+                throw invalid_argument(word);
             }
             if (!IsValidWord(word)) {
-                return false;
+                throw invalid_argument(word);
             }
+
+
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
                     result.minus_words.insert(query_word.data);
@@ -289,7 +290,6 @@ private:
                 }
             }
         }
-        return true;
     }
 
     // Existence required
