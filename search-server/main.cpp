@@ -3,11 +3,10 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <optional>
-#include <numeric>
 
 using namespace std;
 
@@ -58,6 +57,14 @@ struct Document {
     int rating = 0;
 };
 
+ostream &operator<<(ostream &out, const Document &document) {
+    out << "{ "s
+        << "document_id = "s << document.id << ", "s
+        << "relevance = "s << document.relevance << ", "s
+        << "rating = "s << document.rating << " }"s;
+    return out;
+}
+
 template<typename StringContainer>
 set<string> MakeUniqueNonEmptyStrings(const StringContainer &strings) {
     set<string> non_empty_strings;
@@ -88,7 +95,8 @@ public:
     }
 
     explicit SearchServer(const string &stop_words_text)
-            : SearchServer(SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
+            : SearchServer(SplitIntoWords(stop_words_text))  // Invoke delegating constructor
+    // from string container
     {
     }
 
@@ -298,8 +306,7 @@ void PrintDocument(const Document &document) {
     cout << "{ "s
          << "document_id = "s << document.id << ", "s
          << "relevance = "s << document.relevance << ", "s
-         << "rating = "s << document.rating
-         << " }"s << endl;
+         << "rating = "s << document.rating << " }"s << endl;
 }
 
 void PrintMatchDocumentResult(int document_id, const vector<string> &words, DocumentStatus status) {
@@ -317,7 +324,7 @@ void AddDocument(SearchServer &search_server, int document_id, const string &doc
                  const vector<int> &ratings) {
     try {
         search_server.AddDocument(document_id, document, status, ratings);
-    } catch (const exception &e) {
+    } catch (const invalid_argument &e) {
         cout << "Ошибка добавления документа "s << document_id << ": "s << e.what() << endl;
     }
 }
@@ -328,7 +335,7 @@ void FindTopDocuments(const SearchServer &search_server, const string &raw_query
         for (const Document &document: search_server.FindTopDocuments(raw_query)) {
             PrintDocument(document);
         }
-    } catch (const exception &e) {
+    } catch (const invalid_argument &e) {
         cout << "Ошибка поиска: "s << e.what() << endl;
     }
 }
@@ -342,26 +349,94 @@ void MatchDocuments(const SearchServer &search_server, const string &query) {
             const auto[words, status] = search_server.MatchDocument(query, document_id);
             PrintMatchDocumentResult(document_id, words, status);
         }
-    } catch (const exception &e) {
+    } catch (const invalid_argument &e) {
         cout << "Ошибка матчинга документов на запрос "s << query << ": "s << e.what() << endl;
     }
+}
+
+template<typename Iterator>
+class IteratorRange {
+public:
+    IteratorRange(Iterator begin, Iterator end)
+            : first_(begin), last_(end), size_(distance(first_, last_)) {
+    }
+
+    Iterator begin() const {
+        return first_;
+    }
+
+    Iterator end() const {
+        return last_;
+    }
+
+    size_t size() const {
+        return size_;
+    }
+
+private:
+    Iterator first_, last_;
+    size_t size_;
+};
+
+template<typename Iterator>
+ostream &operator<<(ostream &out, const IteratorRange<Iterator> &range) {
+    for (Iterator it = range.begin(); it != range.end(); ++it) {
+        out << *it;
+    }
+    return out;
+}
+
+template<typename Iterator>
+class Paginator {
+public:
+    Paginator(Iterator begin, Iterator end, size_t page_size) {
+        for (size_t left = distance(begin, end); left > 0;) {
+            const size_t current_page_size = min(page_size, left);
+            const Iterator current_page_end = next(begin, current_page_size);
+            pages_.push_back({begin, current_page_end});
+
+            left -= current_page_size;
+            begin = current_page_end;
+        }
+    }
+
+    auto begin() const {
+        return pages_.begin();
+    }
+
+    auto end() const {
+        return pages_.end();
+    }
+
+    size_t size() const {
+        return pages_.size();
+    }
+
+private:
+    vector<IteratorRange<Iterator>> pages_;
+};
+
+template<typename Container>
+auto Paginate(const Container &c, size_t page_size) {
+    return Paginator(begin(c), end(c), page_size);
 }
 
 int main() {
     SearchServer search_server("и в на"s);
 
-    AddDocument(search_server, 1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, {7, 2, 7});
-    AddDocument(search_server, 1, "пушистый пёс и модный ошейник"s, DocumentStatus::ACTUAL, {1, 2});
-    AddDocument(search_server, -1, "пушистый пёс и модный ошейник"s, DocumentStatus::ACTUAL, {1, 2});
-    AddDocument(search_server, 3, "большой пёс скво\x12рец евгений"s, DocumentStatus::ACTUAL, {1, 3, 2});
-    AddDocument(search_server, 4, "большой пёс скворец евгений"s, DocumentStatus::ACTUAL, {1, 1, 1});
+    search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, {7, 2, 7});
+    search_server.AddDocument(2, "пушистый пёс и модный ошейник"s, DocumentStatus::ACTUAL, {1, 2, 3});
+    search_server.AddDocument(3, "большой кот модный ошейник "s, DocumentStatus::ACTUAL, {1, 2, 8});
+    search_server.AddDocument(4, "большой пёс скворец евгений"s, DocumentStatus::ACTUAL, {1, 3, 2});
+    search_server.AddDocument(5, "большой пёс скворец василий"s, DocumentStatus::ACTUAL, {1, 1, 1});
 
-    FindTopDocuments(search_server, "пушистый -пёс"s);
-    FindTopDocuments(search_server, "пушистый --кот"s);
-    FindTopDocuments(search_server, "пушистый -"s);
+    const auto search_results = search_server.FindTopDocuments("пушистый пёс"s);
+    int page_size = 2;
+    const auto pages = Paginate(search_results, page_size);
 
-    MatchDocuments(search_server, "пушистый пёс"s);
-    MatchDocuments(search_server, "модный -кот"s);
-    MatchDocuments(search_server, "модный --пёс"s);
-    MatchDocuments(search_server, "пушистый - хвост"s);
+    // Выводим найденные документы по страницам
+    for (auto page = pages.begin(); page != pages.end(); ++page) {
+        cout << *page << endl;
+        cout << "Разрыв страницы"s << endl;
+    }
 }
