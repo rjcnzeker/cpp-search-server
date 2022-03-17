@@ -1,19 +1,12 @@
-#include <algorithm>
-#include <cmath>
 #include <iostream>
-#include <map>
-#include <set>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
-#include <deque>
-
-using namespace std;
 
 #include "paginator.h"
 #include "document.h"
 #include "search_server.h"
+#include "request_queue.h"
 
 void PrintDocument(const Document &document) {
     cout << "{ "s
@@ -66,59 +59,6 @@ void MatchDocuments(const SearchServer &search_server, const string &query) {
         cout << "Ошибка матчинга документов на запрос "s << query << ": "s << e.what() << endl;
     }
 }
-
-class RequestQueue {
-public:
-    explicit RequestQueue(const SearchServer &search_server) : search_server_(search_server) {
-    }
-
-    // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
-    template<typename DocumentPredicate>
-    vector<Document> AddFindRequest(const string &raw_query, DocumentPredicate document_predicate) {
-        vector<Document> result = search_server_.FindTopDocuments(raw_query, document_predicate);
-        if (requests_.size() >= min_in_day_) {
-            requests_.pop_front();
-        }
-        requests_.push_back({!result.empty()});
-        return result;
-    }
-
-    vector<Document> AddFindRequest(const string &raw_query, DocumentStatus status) {
-        vector<Document> result = search_server_.FindTopDocuments(raw_query, status);
-        if (requests_.size() >= min_in_day_) {
-            requests_.pop_front();
-        }
-        requests_.push_back({!result.empty()});
-        return result;
-    }
-
-    vector<Document> AddFindRequest(const string &raw_query) {
-        vector<Document> result = search_server_.FindTopDocuments(raw_query);
-        if (requests_.size() >= min_in_day_) {
-            requests_.pop_front();
-        }
-        requests_.push_back({!result.empty()});
-        return result;
-    }
-
-    int GetNoResultRequests() const {
-        int answer = 0;
-        for (QueryResult ggg : requests_) {
-            if (!ggg.result) {
-                ++answer;
-            }
-        }
-        return answer;
-    }
-
-private:
-    struct QueryResult {
-        bool result;
-    };
-    deque<QueryResult> requests_;
-    const static int min_in_day_ = 1440;
-    const SearchServer& search_server_;
-};
 
 int main() {
     SearchServer search_server("and in at"s);
