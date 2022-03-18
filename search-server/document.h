@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-using namespace std;
-
 struct Document {
     Document();
 
@@ -14,7 +12,7 @@ struct Document {
     int rating = 0;
 };
 
-ostream &operator<<(ostream &out, const Document &document);
+std::ostream &operator<<(std::ostream &out, const Document &document);
 
 enum class DocumentStatus {
     ACTUAL,
