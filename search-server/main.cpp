@@ -7,6 +7,7 @@
 #include "document.h"
 #include "search_server.h"
 #include "request_queue.h"
+#include "log_duration.h"
 
 void PrintDocument(const Document &document) {
     cout << "{ "s
@@ -69,6 +70,17 @@ int main() {
     search_server.AddDocument(3, "big cat fancy collar "s, DocumentStatus::ACTUAL, {1, 2, 8});
     search_server.AddDocument(4, "big dog sparrow Eugene"s, DocumentStatus::ACTUAL, {1, 3, 2});
     search_server.AddDocument(5, "big dog sparrow Vasiliy"s, DocumentStatus::ACTUAL, {1, 1, 1});
+
+    {
+        LOG_DURATION_STREAM(" ", cout);
+        MatchDocuments(search_server, "пушистый -пёс"s);
+    }
+    {
+        LOG_DURATION_STREAM(" ", cout);
+        FindTopDocuments(search_server, "пушистый -кот"s);
+    }
+
+
 
     // 1439 запросов с нулевым результатом
     for (int i = 0; i < 1439; ++i) {
