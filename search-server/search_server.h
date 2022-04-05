@@ -15,8 +15,8 @@ const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
 class SearchServer {
 public:
-    template <typename StringContainer>
-    explicit SearchServer(const StringContainer& stop_words);
+    template<typename StringContainer>
+    explicit SearchServer(const StringContainer &stop_words);
 
     explicit SearchServer(const string &stop_words_text);
 
@@ -24,14 +24,23 @@ public:
 
     template<typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string &raw_query, DocumentPredicate document_predicate) const;
+
     vector<Document> FindTopDocuments(const string &raw_query, DocumentStatus status) const;
+
     vector<Document> FindTopDocuments(const string &raw_query) const;
 
     int GetDocumentCount() const;
 
-    int GetDocumentId(int index) const;
+    int begin();
 
+    int end();
+
+    /*
+    int GetDocumentId(int index) const;
+*/
     tuple<vector<string>, DocumentStatus> MatchDocument(const string &raw_query, int document_id) const;
+
+    const map<string, double> &GetWordFrequencies(int document_id) const;
 
 private:
     struct DocumentData {
@@ -43,6 +52,8 @@ private:
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
     vector<int> document_ids_;
+    map<int, map<string, double>> documents_to_words_freqs_;
+
 
     bool IsStopWord(const string &word) const;
 
@@ -73,8 +84,8 @@ private:
     vector<Document> FindAllDocuments(const Query &query, DocumentPredicate document_predicate) const;
 };
 
-template <typename StringContainer>
-SearchServer::SearchServer(const StringContainer& stop_words)
+template<typename StringContainer>
+SearchServer::SearchServer(const StringContainer &stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
 {
     if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {

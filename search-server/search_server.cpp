@@ -36,8 +36,17 @@ int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
+/*
 int SearchServer::GetDocumentId(int index) const {
     return document_ids_.at(index);
+}*/
+
+int SearchServer::begin() {
+    return *document_ids_.begin();
+}
+
+int SearchServer::end() {
+    return *document_ids_.end();
 }
 
 tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string &raw_query, int document_id) const {
@@ -62,6 +71,20 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string &
         }
     }
     return {matched_words, documents_.at(document_id).status};
+}
+
+const map<string, double> &SearchServer::GetWordFrequencies(int document_id) const {
+    map<string, double> documents_to_words_freqs;
+    for (auto &[text, data]: word_to_document_freqs_) {
+        auto ggg = find_if(data.begin(), data.end(), [document_id](auto data) {
+            return data.first == document_id;
+        });
+        if (ggg->first == document_id) {
+            documents_to_words_freqs.insert({text, ggg->second});
+        }
+    }
+    const auto &ug = documents_to_words_freqs;
+    return ug;
 }
 
 bool SearchServer::IsStopWord(const string &word) const {
