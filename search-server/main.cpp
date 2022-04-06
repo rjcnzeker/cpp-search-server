@@ -8,6 +8,8 @@
 #include "search_server.h"
 #include "request_queue.h"
 #include "log_duration.h"
+#include "remove_duplicates.h"
+
 /*
 void PrintDocument(const Document &document) {
     cout << "{ "s
@@ -62,7 +64,6 @@ void MatchDocuments(const SearchServer &search_server, const string &query) {
 }*/
 
 int main() {
-
     SearchServer search_server("and with"s);
 
     AddDocument(search_server, 1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, {7, 2, 7});
@@ -73,6 +74,8 @@ int main() {
 
     // отличие только в стоп-словах, считаем дубликатом
     AddDocument(search_server, 4, "funny pet and curly hair"s, DocumentStatus::ACTUAL, {1, 2});
+
+   // search_server.RemoveDocument(1);
 
     // множество слов такое же, считаем дубликатом документа 1
     AddDocument(search_server, 5, "funny funny pet and nasty nasty rat"s, DocumentStatus::ACTUAL, {1, 2});
@@ -89,9 +92,9 @@ int main() {
     // слова из разных документов, не является дубликатом
     AddDocument(search_server, 9, "nasty rat with curly hair"s, DocumentStatus::ACTUAL, {1, 2});
 
-  //  map <string, double> answer = search_server.GetWordFrequencies(3);
     cout << "Before duplicates removed: "s << search_server.GetDocumentCount() << endl;
-   // RemoveDuplicates(search_server);
+    RemoveDuplicates(search_server);
+
     cout << "After duplicates removed: "s << search_server.GetDocumentCount() << endl;
 
 

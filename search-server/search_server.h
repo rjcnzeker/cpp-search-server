@@ -31,18 +31,20 @@ public:
 
     int GetDocumentCount() const;
 
-    int begin();
-
-    int end();
-
-    /*
-    int GetDocumentId(int index) const;
-*/
     tuple<vector<string>, DocumentStatus> MatchDocument(const string &raw_query, int document_id) const;
 
     const map<string, double> &GetWordFrequencies(int document_id) const;
 
+    int* begin();
+
+    int* end();
+
+    void RemoveDocument(int document_id);
+
+    const map<int, set<string>> &GetDocumentsList() const;
+
 private:
+
     struct DocumentData {
         int rating;
         DocumentStatus status;
@@ -52,8 +54,7 @@ private:
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
     vector<int> document_ids_;
-    map<int, map<string, double>> documents_to_words_freqs_;
-
+    map<int, set<string>> documents_words_;
 
     bool IsStopWord(const string &word) const;
 
@@ -82,6 +83,7 @@ private:
 
     template<typename DocumentPredicate>
     vector<Document> FindAllDocuments(const Query &query, DocumentPredicate document_predicate) const;
+
 };
 
 template<typename StringContainer>
@@ -144,3 +146,4 @@ vector<Document> SearchServer::FindAllDocuments(const Query &query, DocumentPred
     }
     return matched_documents;
 }
+
