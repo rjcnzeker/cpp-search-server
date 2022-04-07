@@ -16,11 +16,10 @@ SearchServer::AddDocument(int document_id, const string &document, DocumentStatu
     const double inv_word_count = 1.0 / words.size();
     for (const string &word: words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
+        documents_to_words_freqs_[document_id][word] += inv_word_count;
     }
     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
-    document_ids_.push_back(document_id);
-    set<string> s(words.begin(), words.end());
-    documents_words_.insert({document_id, s});
+    document_ids_.insert(document_id);
 }
 
 vector<Document> SearchServer::FindTopDocuments(const string &raw_query, DocumentStatus status) const {
@@ -63,56 +62,28 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string &
 }
 
 const map<string, double> & SearchServer::GetWordFrequencies(int document_id) const {
-    map<string, double> documents_to_words_freqs;
-    for (auto &[text, data]: word_to_document_freqs_) {
-        auto ggg = find_if(data.begin(), data.end(), [document_id](auto data) {
-            return data.first == document_id;
-        });
-        if (ggg->first == document_id) {
-            documents_to_words_freqs.insert({text, ggg->second});
-        }
-    }
-    static const map<string, double> &documents_to_words_freqs_link = documents_to_words_freqs;
-    return documents_to_words_freqs_link;
+    return documents_to_words_freqs_.at(document_id);
 }
 
-int* SearchServer::begin() {
-    int &begin_link = *document_ids_.begin();
-    return &begin_link;
+_Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> SearchServer::begin() {
+    return documents_to_words_freqs_.begin();
 }
 
-int* SearchServer::end() {
-    int &end_link = *document_ids_.end();
-    return &end_link;
+_Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> SearchServer::end() {
+    return documents_to_words_freqs_.end();
 }
 
 void SearchServer::RemoveDocument(int document_id) {
-    //Удаление документа из списка слов
-    vector<string> remove_list = {};
-    for (auto &[word, data]: word_to_document_freqs_) {
-        auto ggg = find_if(data.begin(), data.end(), [document_id](auto data) {
-            return data.first == document_id;
-        });
-        if (ggg->first == document_id) {
-            word_to_document_freqs_[word].erase(document_id);
-            remove_list.push_back(word);
-        }
-    }
-    for (string word : remove_list) {
-        if (word_to_document_freqs_[word].empty()) {
+    //Удаления из списка слов
+    for (auto [word, freq] : GetWordFrequencies(document_id)) {
             word_to_document_freqs_.erase(word);
-        }
     }
+    //Удавление из списка документов и их слов
+    documents_to_words_freqs_.erase(document_id);
     //Удаление из списка документов
     documents_.erase(document_id);
     //Удаление из списка айди
-    document_ids_.erase(find_if(document_ids_.begin(), document_ids_.end(), [document_id] (int id) {
-        return id == document_id;
-    }));
-}
-
-const map<int, set<string>> & SearchServer::GetDocumentsList() const {
-    return documents_words_;
+    document_ids_.erase(document_id);
 }
 
 bool SearchServer::IsStopWord(const string &word) const {

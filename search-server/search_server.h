@@ -17,16 +17,13 @@ class SearchServer {
 public:
     template<typename StringContainer>
     explicit SearchServer(const StringContainer &stop_words);
-
     explicit SearchServer(const string &stop_words_text);
 
     void AddDocument(int document_id, const string &document, DocumentStatus status, const vector<int> &ratings);
 
     template<typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string &raw_query, DocumentPredicate document_predicate) const;
-
     vector<Document> FindTopDocuments(const string &raw_query, DocumentStatus status) const;
-
     vector<Document> FindTopDocuments(const string &raw_query) const;
 
     int GetDocumentCount() const;
@@ -35,13 +32,11 @@ public:
 
     const map<string, double> &GetWordFrequencies(int document_id) const;
 
-    int* begin();
+    _Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> begin();
 
-    int* end();
+    _Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> end();
 
     void RemoveDocument(int document_id);
-
-    const map<int, set<string>> &GetDocumentsList() const;
 
 private:
 
@@ -52,9 +47,9 @@ private:
 
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
+    map <int, map <string, double>> documents_to_words_freqs_;
     map<int, DocumentData> documents_;
-    vector<int> document_ids_;
-    map<int, set<string>> documents_words_;
+    set<int> document_ids_;
 
     bool IsStopWord(const string &word) const;
 

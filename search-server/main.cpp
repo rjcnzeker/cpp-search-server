@@ -50,8 +50,6 @@ void FindTopDocuments(const SearchServer &search_server, const string &raw_query
 int main() {
     SearchServer search_server("and with"s);
 
-    TestSearchServer();
-
     AddDocument(search_server, 1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, {7, 2, 7});
     AddDocument(search_server, 2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2});
 
