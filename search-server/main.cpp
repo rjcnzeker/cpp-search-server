@@ -55,12 +55,10 @@ int main() {
 
     // дубликат документа 2, будет удалён
     AddDocument(search_server, 3, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2});
-
+/*
     // отличие только в стоп-словах, считаем дубликатом
     AddDocument(search_server, 4, "funny pet and curly hair"s, DocumentStatus::ACTUAL, {1, 2});
-
-   // search_server.RemoveDocument(1);
-
+*/
     // множество слов такое же, считаем дубликатом документа 1
     AddDocument(search_server, 5, "funny funny pet and nasty nasty rat"s, DocumentStatus::ACTUAL, {1, 2});
 
@@ -78,8 +76,5 @@ int main() {
 
     cout << "Before duplicates removed: "s << search_server.GetDocumentCount() << endl;
     RemoveDuplicates(search_server);
-
     cout << "After duplicates removed: "s << search_server.GetDocumentCount() << endl;
-
-
 }
