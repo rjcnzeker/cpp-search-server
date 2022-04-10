@@ -65,13 +65,13 @@ const map<string, double> & SearchServer::GetWordFrequencies(int document_id) co
     return documents_to_words_freqs_.at(document_id);
 }
 
-_Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> SearchServer::begin() {
+_Rb_tree_const_iterator<int> SearchServer::begin() {
     //Тут удобнее возвращать итератор на список документов, так я смогу пройтись по списку в RemoveDuplicates()
-    return documents_to_words_freqs_.begin();
+    return document_ids_.begin();
 }
 
-_Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> SearchServer::end() {
-    return documents_to_words_freqs_.end();
+_Rb_tree_const_iterator<int> SearchServer::end() {
+    return document_ids_.end();
 }
 
 void SearchServer::RemoveDocument(int document_id) {

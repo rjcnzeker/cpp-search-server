@@ -32,9 +32,9 @@ public:
 
     const map<string, double> &GetWordFrequencies(int document_id) const;
 
-    _Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> begin();
+    _Rb_tree_const_iterator<int> begin();
 
-    _Rb_tree_iterator<pair<const int, map<basic_string<char>, double>>> end();
+    _Rb_tree_const_iterator<int> end();
 
     void RemoveDocument(int document_id);
 
