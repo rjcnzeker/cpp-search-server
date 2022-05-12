@@ -7,6 +7,7 @@
 #include <map>
 #include <cmath>
 #include <algorithm>
+#include <execution>
 
 #include "string_processing.h"
 #include "document.h"
@@ -37,6 +38,8 @@ public:
     _Rb_tree_const_iterator<int> end();
 
     void RemoveDocument(int document_id);
+    void RemoveDocument(execution::sequenced_policy sequencedPolicy, int document_id);
+    void RemoveDocument(execution::parallel_policy parallelPolicy, int document_id);
 
 private:
 
