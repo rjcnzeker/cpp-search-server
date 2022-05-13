@@ -91,8 +91,6 @@ tuple<vector<string>, DocumentStatus>
 SearchServer::MatchDocument(std::execution::parallel_policy policy, const string& raw_query, int document_id) const {
     const auto query = ParseQueryForPar(raw_query);
 
-    vector<string> matched_words(query.plus_words.size());
-
     if (any_of(std::execution::par, query.minus_words.begin(), query.minus_words.end(), [this, document_id] (const string& word) {
         if (word_to_document_freqs_.count(word) == 0) {
             return false;
@@ -106,6 +104,8 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, const string
         return {vector<string>{}, documents_.at(document_id).status};
     }
 
+    vector<string> matched_words(query.plus_words.size());
+
     transform(std::execution::par, query.plus_words.begin(), query.plus_words.end(), matched_words.begin(), [this, document_id] (const string& word) {
         if (word_to_document_freqs_.count(word) == 0) {
             return ""s;
@@ -116,6 +116,12 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, const string
         return ""s;
     } ) ;
 
+    std::sort(matched_words.begin(), matched_words.end());
+    auto last = std::unique(matched_words.begin(), matched_words.end());
+   matched_words.erase(last, matched_words.end());
+   if (*matched_words.begin() == "") {
+       matched_words.erase(matched_words.begin());
+   }
 
     return {matched_words, documents_.at(document_id).status};
 }
