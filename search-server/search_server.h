@@ -34,6 +34,10 @@ public:
     int GetDocumentCount() const;
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
+    tuple<vector<string>, DocumentStatus>
+    MatchDocument(execution::sequenced_policy policy, const string& raw_query, int document_id) const;
+    tuple<vector<string>, DocumentStatus>
+    MatchDocument(execution::parallel_policy policy, const string& raw_query, int document_id) const;
 
     const map<string, double>& GetWordFrequencies(int document_id) const;
 
@@ -80,7 +84,14 @@ private:
         set<string> minus_words;
     };
 
+    struct Query_for_par {
+        vector<string> plus_words;
+        vector<string> minus_words;
+    };
+
     Query ParseQuery(const string& text) const;
+
+    Query_for_par ParseQueryForPar(const string& text) const;
 
     double ComputeWordInverseDocumentFreq(const string& word) const;
 
@@ -154,7 +165,8 @@ template<typename P>
 void SearchServer::RemoveDocument(P policy, int document_id) {
     std::vector<string*> words_to_delete(GetWordFrequencies(document_id).size());
 
-    std::transform(policy, documents_to_words_freqs_.at(document_id).begin(), documents_to_words_freqs_.at(document_id).end(), words_to_delete.begin(),
+    std::transform(policy, documents_to_words_freqs_.at(document_id).begin(),
+                   documents_to_words_freqs_.at(document_id).end(), words_to_delete.begin(),
                    [](const pair<const string, double>& word) {
                        auto* word_ref = const_cast<string*>(&word.first);
                        return word_ref;

@@ -62,6 +62,64 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
     return {matched_words, documents_.at(document_id).status};
 }
 
+tuple<vector<string>, DocumentStatus>
+SearchServer::MatchDocument(std::execution::sequenced_policy policy, const string& raw_query, int document_id) const {
+    const auto query = ParseQuery(raw_query);
+
+    vector<string> matched_words;
+    for (const string& word : query.plus_words) {
+        if (word_to_document_freqs_.count(word) == 0) {
+            continue;
+        }
+        if (word_to_document_freqs_.at(word).count(document_id)) {
+            matched_words.push_back(word);
+        }
+    }
+    for (const string& word : query.minus_words) {
+        if (word_to_document_freqs_.count(word) == 0) {
+            continue;
+        }
+        if (word_to_document_freqs_.at(word).count(document_id)) {
+            matched_words.clear();
+            break;
+        }
+    }
+    return {matched_words, documents_.at(document_id).status};
+}
+
+tuple<vector<string>, DocumentStatus>
+SearchServer::MatchDocument(std::execution::parallel_policy policy, const string& raw_query, int document_id) const {
+    const auto query = ParseQueryForPar(raw_query);
+
+    vector<string> matched_words(query.plus_words.size());
+
+    if (any_of(std::execution::par, query.minus_words.begin(), query.minus_words.end(), [this, document_id] (const string& word) {
+        if (word_to_document_freqs_.count(word) == 0) {
+            return false;
+        }
+        if (word_to_document_freqs_.at(word).count(document_id)) {
+            return true;
+        }
+        return false;
+    }) ) {
+
+        return {vector<string>{}, documents_.at(document_id).status};
+    }
+
+    transform(std::execution::par, query.plus_words.begin(), query.plus_words.end(), matched_words.begin(), [this, document_id] (const string& word) {
+        if (word_to_document_freqs_.count(word) == 0) {
+            return ""s;
+        }
+        if (word_to_document_freqs_.at(word).count(document_id)) {
+            return word;
+        }
+        return ""s;
+    } ) ;
+
+
+    return {matched_words, documents_.at(document_id).status};
+}
+
 const map<string, double>& SearchServer::GetWordFrequencies(int document_id) const {
     return documents_to_words_freqs_.at(document_id);
 }
@@ -140,6 +198,21 @@ SearchServer::Query SearchServer::ParseQuery(const string& text) const {
                 result.minus_words.insert(query_word.data);
             } else {
                 result.plus_words.insert(query_word.data);
+            }
+        }
+    }
+    return result;
+}
+
+SearchServer::Query_for_par SearchServer::ParseQueryForPar(const string& text) const {
+    Query_for_par result;
+    for (const string& word : SplitIntoWords(text)) {
+        const auto query_word = ParseQueryWord(word);
+        if (!query_word.is_stop) {
+            if (query_word.is_minus) {
+                result.minus_words.push_back(query_word.data);
+            } else {
+                result.plus_words.push_back(query_word.data);
             }
         }
     }
