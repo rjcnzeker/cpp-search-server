@@ -1,3 +1,4 @@
+#include <deque>
 #include "search_server.h"
 
 SearchServer::SearchServer(const string& stop_words_text)
@@ -75,38 +76,8 @@ _Rb_tree_const_iterator<int> SearchServer::end() {
 }
 
 void SearchServer::RemoveDocument(int document_id) {
-    //Удаления из списка слов
-    for (auto [word, freq] : GetWordFrequencies(document_id)) {
-        word_to_document_freqs_.at(word).erase(document_id);
-    }
-    //Удавление из списка документов и их слов
-    documents_to_words_freqs_.erase(document_id);
-    //Удаление из списка документов
-    documents_.erase(document_id);
-    //Удаление из списка айди
-    document_ids_.erase(document_id);
+    SearchServer::RemoveDocument(std::execution::seq, document_id);
 }
-void SearchServer::RemoveDocument(execution::sequenced_policy sequencedPolicy, int document_id) {
-    SearchServer::RemoveDocument(document_id);
-}
-void SearchServer::RemoveDocument(execution::parallel_policy parallelPolicy, int document_id) {
-    vector<string> words_to_delete;
-    for (auto [word, freq] : GetWordFrequencies(document_id)) {
-        words_to_delete.push_back(word);
-    }
-    std::transform(std::execution::par, words_to_delete.begin(), words_to_delete.end(), words_to_delete.begin(),
-                   [document_id, this](const string& word) {
-                       this->word_to_document_freqs_.at(word).erase(document_id);
-                       return word;
-    });
-    //Удавление из списка документов и их слов
-    documents_to_words_freqs_.erase(document_id);
-    //Удаление из списка документов
-    documents_.erase(document_id);
-    //Удаление из списка айди
-    document_ids_.erase(document_id);
-}
-
 
 bool SearchServer::IsStopWord(const string& word) const {
     return stop_words_.count(word) > 0;
