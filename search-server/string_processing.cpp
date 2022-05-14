@@ -1,6 +1,6 @@
 #include "string_processing.h"
 
-vector<string> SplitIntoWords(const string &text) {
+vector<string> SplitIntoWords(const string_view &text) {
     vector<string> words;
     string word;
     for (const char c: text) {
@@ -18,4 +18,24 @@ vector<string> SplitIntoWords(const string &text) {
     }
 
     return words;
+}
+
+vector<string_view> SplitIntoWordsView(basic_string_view<char> str) {
+    vector<string_view> result;
+
+    str.remove_prefix(std::min(str.find_first_not_of(" "s), str.size()));
+    const int64_t pos_end = str.npos;
+
+    while (str.size()) {
+        int64_t space = str.find(' ');
+        result.push_back(space == pos_end ? str.substr(0) : str.substr(0, space));
+        if (space == pos_end) {
+            str.remove_prefix(str.size());
+        } else {
+            str.remove_prefix(space);
+        }
+        str.remove_prefix(std::min(str.find_first_not_of(" "), str.size()));
+    }
+
+    return result;
 }

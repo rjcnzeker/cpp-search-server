@@ -80,20 +80,20 @@ void TestMatchedDocuments() {
     const vector<int> ratings = {1, 2, 3};
 
     {
-        tuple<vector<string>, DocumentStatus> founding = {{"a", "b", "ccc", "ddd"}, DocumentStatus::ACTUAL};
+        tuple<vector<string_view>, DocumentStatus> founding = {{"a", "b", "ccc", "ddd"}, DocumentStatus::ACTUAL};
         SearchServer server = SearchServer(" "s);
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        tuple<vector<string>, DocumentStatus> matched = server.MatchDocument("a b ccc ddd", doc_id);
+        tuple<vector<string_view>, DocumentStatus> matched = server.MatchDocument("a b ccc ddd", doc_id);
         auto [matched_vector, matched_Document_Status] = matched;
         auto [founding_vector, founding_Document_Status] = founding;
         ASSERT_EQUAL(matched_vector, founding_vector);
     }
 
     {
-        tuple<vector<string>, DocumentStatus> founding = {{"a", "b", "ccc"}, DocumentStatus::BANNED};
+        tuple<vector<string_view>, DocumentStatus> founding = {{"a", "b", "ccc"}, DocumentStatus::BANNED};
         SearchServer server = SearchServer(" "s);
         server.AddDocument(doc_id, content, DocumentStatus::BANNED, ratings);
-        tuple<vector<string>, DocumentStatus> matched = server.MatchDocument("a b ccc -ddd", doc_id);
+        tuple<vector<string_view>, DocumentStatus> matched = server.MatchDocument("a b ccc -ddd"s, doc_id);
         auto [matched_vector, matched_Document_Status] = matched;
         auto [founding_vector, founding_Document_Status] = founding;
         ASSERT(matched_vector != founding_vector);
@@ -101,10 +101,10 @@ void TestMatchedDocuments() {
 
     // ASSERT_NON_EQUAL Для несовпадающих векторов
     {
-        tuple<vector<string>, DocumentStatus> founding = {{"b"}, DocumentStatus::ACTUAL};
+        tuple<vector<string_view>, DocumentStatus> founding = {{"b"}, DocumentStatus::ACTUAL};
         SearchServer server = SearchServer(" "s);
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        tuple<vector<string>, DocumentStatus> matched = server.MatchDocument("g b i m", doc_id);
+        tuple<vector<string_view>, DocumentStatus> matched = server.MatchDocument("g b i m", doc_id);
         auto [matched_vector, matched_Document_Status] = matched;
         auto [founding_vector, founding_Document_Status] = founding;
         ASSERT_EQUAL(matched_vector, founding_vector);

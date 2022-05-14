@@ -22,24 +22,28 @@ public:
 
     explicit SearchServer(const string& stop_words_text);
 
-    void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings);
+    explicit SearchServer(const std::string_view& stop_words_text);
+
+    void AddDocument(int document_id, const string_view& document, DocumentStatus status, const vector<int>& ratings);
 
     template<typename DocumentPredicate>
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const;
+    vector<Document> FindTopDocuments(const string_view & raw_query, DocumentPredicate document_predicate) const;
 
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status) const;
+    vector<Document> FindTopDocuments(const string_view& raw_query, DocumentStatus status) const;
 
-    vector<Document> FindTopDocuments(const string& raw_query) const;
+    vector<Document> FindTopDocuments(const string_view& raw_query) const;
 
     int GetDocumentCount() const;
 
-    tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
-    tuple<vector<string>, DocumentStatus>
-    MatchDocument(execution::sequenced_policy policy, const string& raw_query, int document_id) const;
-    tuple<vector<string>, DocumentStatus>
-    MatchDocument(execution::parallel_policy policy, const string& raw_query, int document_id) const;
+    tuple<vector<string_view>, DocumentStatus> MatchDocument(const string_view& raw_query, int document_id) const;
 
-    const map<string, double>& GetWordFrequencies(int document_id) const;
+    tuple<vector<string_view>, DocumentStatus>
+    MatchDocument(execution::sequenced_policy policy, const string_view& raw_query, int document_id) const;
+
+    std::tuple<std::vector<std::string_view>, DocumentStatus>
+    MatchDocument(execution::parallel_policy policy, std::string_view raw_query, int document_id) const;
+
+    const map<string_view , double>& GetWordFrequencies(int document_id) const;
 
     _Rb_tree_const_iterator<int> begin();
 
@@ -59,15 +63,15 @@ private:
 
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
-    map<int, map<string, double>> documents_to_words_freqs_;
+    map<int, map<string , double>> documents_to_words_freqs_;
     map<int, DocumentData> documents_;
     set<int> document_ids_;
 
-    bool IsStopWord(const string& word) const;
+    bool IsStopWord(const basic_string<char>& word) const;
 
-    static bool IsValidWord(const string& word);
+    static bool IsValidWord(string_view word);
 
-    vector<string> SplitIntoWordsNoStop(const string& text) const;
+    vector<string> SplitIntoWordsNoStop(string_view text) const;
 
     static int ComputeAverageRating(const vector<int>& ratings);
 
@@ -77,7 +81,7 @@ private:
         bool is_stop;
     };
 
-    QueryWord ParseQueryWord(const string& text) const;
+    QueryWord ParseQueryWord(const string_view& text) const;
 
     struct Query {
         set<string> plus_words;
@@ -89,9 +93,9 @@ private:
         vector<string> minus_words;
     };
 
-    Query ParseQuery(const string& text) const;
+    Query ParseQuery(const string_view& text) const;
 
-    Query_for_par ParseQueryForPar(const string& text) const;
+    Query_for_par ParseQueryForPar(const string_view& text) const;
 
     double ComputeWordInverseDocumentFreq(const string& word) const;
 
@@ -110,7 +114,7 @@ SearchServer::SearchServer(const StringContainer& stop_words)
 }
 
 template<typename DocumentPredicate>
-vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
+vector<Document> SearchServer::FindTopDocuments(const string_view& raw_query, DocumentPredicate document_predicate) const {
     const auto query = ParseQuery(raw_query);
 
     auto matched_documents = FindAllDocuments(query, document_predicate);
@@ -185,3 +189,4 @@ void SearchServer::RemoveDocument(P policy, int document_id) {
     //Удаление из списка айди
     document_ids_.erase(document_id);
 }
+

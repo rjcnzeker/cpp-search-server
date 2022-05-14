@@ -2,9 +2,9 @@
 
 void RemoveDuplicates(SearchServer &search_server) {
     set<int> remove_list = {};
-    set<set<string>> documents_words = {};
+    set<set<string_view>> documents_words = {};
     for (int id : search_server) {
-        set<string> words_origin = {};
+        set<string_view> words_origin = {};
         for (auto [word, freq] : search_server.GetWordFrequencies(id)) {
             words_origin.insert(word);
         }
