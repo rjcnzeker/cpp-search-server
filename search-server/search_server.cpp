@@ -169,7 +169,7 @@ bool SearchServer::IsValidWord(const string& word) {
 
 vector<string> SearchServer::SplitIntoWordsNoStop(const string_view & text) const {
     vector<string> words;
-    for (const string& word : SplitIntoWords(text)) {
+    for (const string& word : SplitIntoWordsView(text)) {
         if (!IsValidWord(word)) {
             throw invalid_argument("Word "s + word + " is invalid"s);
         }
@@ -211,7 +211,7 @@ SearchServer::QueryWord SearchServer::ParseQueryWord(const string& text) const {
 
 SearchServer::Query SearchServer::ParseQuery(const string_view& text) const {
     Query result;
-    for (const string& word : SplitIntoWords(text)) {
+    for (const string& word : SplitIntoWordsView(text)) {
         const auto query_word = ParseQueryWord(word);
         if (!query_word.is_stop) {
             if (query_word.is_minus) {
@@ -226,7 +226,7 @@ SearchServer::Query SearchServer::ParseQuery(const string_view& text) const {
 
 SearchServer::Query_for_par SearchServer::ParseQueryForPar(const string_view& text) const {
     Query_for_par result;
-    for (const string& word : SplitIntoWords(text)) {
+    for (const string& word : SplitIntoWordsView(text)) {
         const auto query_word = ParseQueryWord(word);
         if (!query_word.is_stop) {
             if (query_word.is_minus) {

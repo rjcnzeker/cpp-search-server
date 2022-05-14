@@ -20,7 +20,7 @@ vector<string> SplitIntoWords(const string_view &text) {
     return words;
 }
 
-vector<string_view> SplitIntoWordsView(basic_string_view<char> str) {
+vector<string> SplitIntoWordsView(basic_string_view<char> str) {
     vector<string_view> result;
 
     str.remove_prefix(std::min(str.find_first_not_of(" "s), str.size()));
@@ -37,5 +37,6 @@ vector<string_view> SplitIntoWordsView(basic_string_view<char> str) {
         str.remove_prefix(std::min(str.find_first_not_of(" "), str.size()));
     }
 
-    return result;
+    vector<string> ggg(result.begin(), result.end());
+    return ggg;
 }

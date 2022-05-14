@@ -9,7 +9,7 @@ using namespace std;
 
 vector<string> SplitIntoWords(const string_view &text);
 
-vector<string_view> SplitIntoWordsView(string_view str);
+vector<string> SplitIntoWordsView(string_view str);
 
 template<typename StringContainer>
 set<string> MakeUniqueNonEmptyStrings(const StringContainer &strings) {
