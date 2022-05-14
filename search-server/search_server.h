@@ -40,8 +40,8 @@ public:
     tuple<vector<string_view>, DocumentStatus>
     MatchDocument(execution::sequenced_policy policy, const string_view& raw_query, int document_id) const;
 
-    std::tuple<std::vector<std::string_view>, DocumentStatus>
-    MatchDocument(execution::parallel_policy policy, std::string_view raw_query, int document_id) const;
+    tuple<vector<string_view>, DocumentStatus>
+    MatchDocument(execution::parallel_policy policy, const string_view& raw_query, int document_id) const;
 
     const map<string_view , double>& GetWordFrequencies(int document_id) const;
 
@@ -67,11 +67,11 @@ private:
     map<int, DocumentData> documents_;
     set<int> document_ids_;
 
-    bool IsStopWord(const basic_string<char>& word) const;
+    bool IsStopWord(const string& word) const;
 
-    static bool IsValidWord(string_view word);
+    static bool IsValidWord(const string& word);
 
-    vector<string> SplitIntoWordsNoStop(string_view text) const;
+    vector<string> SplitIntoWordsNoStop(const string_view& text) const;
 
     static int ComputeAverageRating(const vector<int>& ratings);
 
@@ -81,7 +81,7 @@ private:
         bool is_stop;
     };
 
-    QueryWord ParseQueryWord(const string_view& text) const;
+    QueryWord ParseQueryWord(const string& text) const;
 
     struct Query {
         set<string> plus_words;
@@ -189,4 +189,3 @@ void SearchServer::RemoveDocument(P policy, int document_id) {
     //Удаление из списка айди
     document_ids_.erase(document_id);
 }
-
