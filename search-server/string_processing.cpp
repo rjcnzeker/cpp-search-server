@@ -1,30 +1,10 @@
 #include "string_processing.h"
 
-vector<string> SplitIntoWords(const string_view &text) {
-    vector<string> words;
-    string word;
-    for (const char c: text) {
-        if (c == ' ') {
-            if (!word.empty()) {
-                words.push_back(word);
-                word.clear();
-            }
-        } else {
-            word += c;
-        }
-    }
-    if (!word.empty()) {
-        words.push_back(word);
-    }
-
-    return words;
-}
-
-vector<string> SplitIntoWordsView(basic_string_view<char> str) {
+vector<string_view> SplitIntoWords(string_view str) {
     vector<string_view> result;
 
-    str.remove_prefix(std::min(str.find_first_not_of(" "s), str.size()));
-    const int64_t pos_end = str.npos;
+    str.remove_prefix(std::min(str.find_first_not_of(" "), str.size()));
+    const int64_t pos_end = std::string_view::npos;
 
     while (str.size()) {
         int64_t space = str.find(' ');
@@ -34,9 +14,8 @@ vector<string> SplitIntoWordsView(basic_string_view<char> str) {
         } else {
             str.remove_prefix(space);
         }
-        str.remove_prefix(std::min(str.find_first_not_of(" "), str.size()));
+        str.remove_prefix(std::min(str.find_first_not_of(" "s), str.size()));
     }
 
-    vector<string> ggg(result.begin(), result.end());
-    return ggg;
+    return result;
 }

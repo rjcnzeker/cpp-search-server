@@ -2,21 +2,21 @@
 
 #include <vector>
 #include <string>
-#include <string_view>
 #include <set>
 
 using namespace std;
 
-vector<string> SplitIntoWords(const string_view &text);
+vector<string_view> SplitIntoWords(string_view text);
 
-vector<string> SplitIntoWordsView(string_view str);
-
-template<typename StringContainer>
-set<string> MakeUniqueNonEmptyStrings(const StringContainer &strings) {
-    set<string> non_empty_strings;
-    for (const string& str: strings) {
-        if (!str.empty()) {
-            non_empty_strings.insert(str);
+template <typename StringContainer>
+std::set<std::string, std::less<>> MakeUniqueNonEmptyStrings(const StringContainer& strings)
+{
+    std::set<std::string, std::less<>> non_empty_strings;
+    for (std::string_view str : strings)
+    {
+        if (!str.empty())
+        {
+            non_empty_strings.emplace(str);
         }
     }
     return non_empty_strings;

@@ -93,7 +93,7 @@ void TestMatchedDocuments() {
         tuple<vector<string_view>, DocumentStatus> founding = {{"a", "b", "ccc"}, DocumentStatus::BANNED};
         SearchServer server = SearchServer(" "s);
         server.AddDocument(doc_id, content, DocumentStatus::BANNED, ratings);
-        tuple<vector<string_view>, DocumentStatus> matched = server.MatchDocument("a b ccc -ddd"s, doc_id);
+        tuple<vector<string_view>, DocumentStatus> matched = server.MatchDocument("a b ccc -ddd", doc_id);
         auto [matched_vector, matched_Document_Status] = matched;
         auto [founding_vector, founding_Document_Status] = founding;
         ASSERT(matched_vector != founding_vector);
