@@ -41,10 +41,11 @@ tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_vi
     bool empty_return = false;
     vector<string_view> matched_words;
     for (const string_view word : query.minus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
+        string word_str = string(word);
+        if (word_to_document_freqs_.count(word_str) == 0) {
             continue;
         }
-        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
+        if (word_to_document_freqs_.at(word_str).count(document_id)) {
             empty_return = true;
             break;
         }
@@ -54,10 +55,11 @@ tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_vi
     }
 
     for (basic_string_view<char> word : query.plus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
+        string word_str = string(word);
+        if (word_to_document_freqs_.count(word_str) == 0) {
             continue;
         }
-        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
+        if (word_to_document_freqs_.at(word_str).count(document_id)) {
             matched_words.push_back(word);
         }
     }
@@ -74,10 +76,11 @@ SearchServer::MatchDocument(std::execution::sequenced_policy policy, string_view
     bool empty_return = false;
     vector<string_view> matched_words;
     for (const string_view word : query.minus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
+        string word_str = string(word);
+        if (word_to_document_freqs_.count(word_str) == 0) {
             continue;
         }
-        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
+        if (word_to_document_freqs_.at(word_str).count(document_id)) {
             empty_return = true;
             break;
         }
@@ -87,10 +90,11 @@ SearchServer::MatchDocument(std::execution::sequenced_policy policy, string_view
     }
 
     for (basic_string_view<char> word : query.plus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
+        string word_str = string(word);
+        if (word_to_document_freqs_.count(word_str) == 0) {
             continue;
         }
-        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
+        if (word_to_document_freqs_.at(word_str).count(document_id)) {
             matched_words.push_back(word);
         }
     }
@@ -108,10 +112,11 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
 
     if (any_of(std::execution::par, query.minus_words.begin(), query.minus_words.end(),
                [this, document_id](string_view word) {
-                   if (word_to_document_freqs_.count(string (word)) == 0) {
+                    string word_str = string(word);
+                   if (word_to_document_freqs_.count(word_str) == 0) {
                        return false;
                    }
-                   if (word_to_document_freqs_.at(string (word)).count(document_id)) {
+                   if (word_to_document_freqs_.at(word_str).count(document_id)) {
                        return true;
                    }
                    return false;
@@ -121,13 +126,15 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
     }
 
     vector<string_view> matched_words(query.plus_words.size());
+    matched_words.reserve(10000);
 
     transform(std::execution::par, query.plus_words.begin(), query.plus_words.end(), matched_words.begin(),
               [this, document_id](string_view word) {
-                  if (word_to_document_freqs_.count(string(word)) == 0) {
+                  string word_str = string(word);
+                  if (word_to_document_freqs_.count(word_str) == 0) {
                       return string_view{""};
                   }
-                  if (word_to_document_freqs_.at(string (word)).count(document_id)) {
+                  if (word_to_document_freqs_.at(word_str).count(document_id)) {
                       return word;
                   }
                   return string_view{""};

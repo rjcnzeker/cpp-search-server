@@ -86,8 +86,8 @@ private:
     QueryWord ParseQueryWord(string_view text) const;
 
     struct Query {
-        set<string_view> plus_words;
-        set<string_view> minus_words;
+        set<string_view, less<>> plus_words;
+        set<string_view, less<>> minus_words;
     };
 
     struct Query_for_par {
@@ -144,11 +144,12 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
     map<int, double> document_to_relevance;
 
     for (string_view word : query.plus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
+        string word_str = string(word);
+        if (word_to_document_freqs_.count(word_str) == 0) {
             continue;
         }
         const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-        for (const auto [document_id, term_freq] : word_to_document_freqs_.at(string(word))) {
+        for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word_str)) {
             const auto& document_data = documents_.at(document_id);
             if (document_predicate(document_id, document_data.status, document_data.rating)) {
                 document_to_relevance[document_id] += term_freq * inverse_document_freq;
@@ -157,10 +158,11 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
     }
 
     for (string_view word : query.minus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
+        string word_str = string(word);
+        if (word_to_document_freqs_.count(word_str) == 0) {
             continue;
         }
-        for (const auto [document_id, _] : word_to_document_freqs_.at(string(word))) {
+        for (const auto [document_id, _] : word_to_document_freqs_.at(word_str)) {
             document_to_relevance.erase(document_id);
         }
     }
@@ -185,6 +187,7 @@ void SearchServer::RemoveDocument(P policy, int document_id) {
 
     std::for_each(policy, words_to_delete.begin(), words_to_delete.end(),
                   [&document_id, this](string_view word) {
+
                       word_to_document_freqs_.at(string(word)).erase(document_id);
                   });
 
