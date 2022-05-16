@@ -64,7 +64,7 @@ private:
     const set<string, less<>> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, map<string, double>> documents_to_words_freqs_;
-    map<int, DocumentData, less<>> documents_;
+    map<int, DocumentData> documents_;
     set<int, less<>> document_ids_;
 
     bool IsStopWord(string_view word) const;
@@ -86,8 +86,8 @@ private:
     QueryWord ParseQueryWord(string_view text) const;
 
     struct Query {
-        set<string_view, less<>> plus_words;
-        set<string_view, less<>> minus_words;
+        set<string_view> plus_words;
+        set<string_view> minus_words;
     };
 
     struct Query_for_par {
@@ -179,7 +179,7 @@ void SearchServer::RemoveDocument(P policy, int document_id) {
     std::transform(policy, documents_to_words_freqs_.at(document_id).begin(),
                    documents_to_words_freqs_.at(document_id).end(), words_to_delete.begin(),
                    [](const pair<const string_view , double>& word) {
-                      //auto* word_ref = const_cast<string*>(&word.first);
+                       //auto* word_ref = const_cast<string*>(&word.first);
                        return word.first;
                    });
 

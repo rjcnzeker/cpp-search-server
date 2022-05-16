@@ -37,12 +37,23 @@ tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_vi
     if (!CorrectUseDashes(raw_query) || !IsValidWord(raw_query)) {
         throw invalid_argument("invalid_argument"s);
     }
-
     const auto query = ParseQuery(raw_query);
-
+    bool empty_return = false;
     vector<string_view> matched_words;
+    for (const string_view word : query.minus_words) {
+        if (word_to_document_freqs_.count(string(word)) == 0) {
+            continue;
+        }
+        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
+            empty_return = true;
+            break;
+        }
+    }
+    if (empty_return) {
+        return {vector<string_view>{}, documents_.at(document_id).status};
+    }
 
-    for (string_view word : query.plus_words) {
+    for (basic_string_view<char> word : query.plus_words) {
         if (word_to_document_freqs_.count(string(word)) == 0) {
             continue;
         }
@@ -50,15 +61,7 @@ tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_vi
             matched_words.push_back(word);
         }
     }
-    for (const string_view word : query.minus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
-            continue;
-        }
-        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
-            matched_words.clear();
-            break;
-        }
-    }
+
     return {matched_words, documents_.at(document_id).status};
 }
 
@@ -67,12 +70,23 @@ SearchServer::MatchDocument(std::execution::sequenced_policy policy, string_view
     if (!CorrectUseDashes(raw_query) || !IsValidWord(raw_query)) {
         throw invalid_argument("invalid_argument"s);
     }
-
     const auto query = ParseQuery(raw_query);
-
+    bool empty_return = false;
     vector<string_view> matched_words;
+    for (const string_view word : query.minus_words) {
+        if (word_to_document_freqs_.count(string(word)) == 0) {
+            continue;
+        }
+        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
+            empty_return = true;
+            break;
+        }
+    }
+    if (empty_return) {
+        return {vector<string_view>{}, documents_.at(document_id).status};
+    }
 
-    for (string_view word : query.plus_words) {
+    for (basic_string_view<char> word : query.plus_words) {
         if (word_to_document_freqs_.count(string(word)) == 0) {
             continue;
         }
@@ -80,15 +94,7 @@ SearchServer::MatchDocument(std::execution::sequenced_policy policy, string_view
             matched_words.push_back(word);
         }
     }
-    for (const string_view word : query.minus_words) {
-        if (word_to_document_freqs_.count(string(word)) == 0) {
-            continue;
-        }
-        if (word_to_document_freqs_.at(string(word)).count(document_id)) {
-            matched_words.clear();
-            break;
-        }
-    }
+
     return {matched_words, documents_.at(document_id).status};
 }
 
@@ -118,7 +124,7 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
 
     transform(std::execution::par, query.plus_words.begin(), query.plus_words.end(), matched_words.begin(),
               [this, document_id](string_view word) {
-                  if (word_to_document_freqs_.count(string (word)) == 0) {
+                  if (word_to_document_freqs_.count(string(word)) == 0) {
                       return string_view{""};
                   }
                   if (word_to_document_freqs_.at(string (word)).count(document_id)) {
@@ -127,8 +133,8 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
                   return string_view{""};
               });
 
-    std::sort(matched_words.begin(), matched_words.end());
-    auto last = std::unique(matched_words.begin(), matched_words.end());
+    std::sort(std::execution::par, matched_words.begin(), matched_words.end());
+    auto last = std::unique(std::execution::par, matched_words.begin(), matched_words.end());
     matched_words.erase(last, matched_words.end());
 
     if (*matched_words.begin() == "") {
