@@ -116,7 +116,10 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
                    if (word_to_document_freqs_.count(word_str) == 0) {
                        return false;
                    }
-                   if (word_to_document_freqs_.at(word_str).count(document_id)) {
+                   if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(), word_to_document_freqs_.at(word_str).end(),
+                                     [document_id](const pair<int, double>& ggg) {
+                                         return ggg.first == document_id;
+                                     })) {
                        return true;
                    }
                    return false;
@@ -134,7 +137,10 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
                   if (word_to_document_freqs_.count(word_str) == 0) {
                       return string_view{""};
                   }
-                  if (word_to_document_freqs_.at(word_str).count(document_id)) {
+                  if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(), word_to_document_freqs_.at(word_str).end(),
+                                    [document_id](const pair<int, double>& ggg) {
+                                        return ggg.first == document_id;
+                                    })) {
                       return word;
                   }
                   return string_view{""};
