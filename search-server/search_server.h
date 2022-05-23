@@ -21,12 +21,21 @@ public:
     explicit SearchServer(const StringContainer& stop_words);
 
     explicit SearchServer(const std::string& stop_words_text)
-            :SearchServer(std::string_view(stop_words_text)){}
+            : SearchServer(std::string_view(stop_words_text)) {}
 
     explicit SearchServer(std::string_view stop_words_text)
-            :SearchServer(SplitIntoWords(stop_words_text)){}
+            : SearchServer(SplitIntoWords(stop_words_text)) {}
 
     void AddDocument(int document_id, const string_view& document, DocumentStatus status, const vector<int>& ratings);
+
+    template<typename Policy, typename DocumentPredicate>
+    vector<Document> FindTopDocuments(Policy policy, string_view raw_query, DocumentPredicate document_predicate) const;
+
+    template<typename Policy>
+    vector<Document> FindTopDocuments(Policy policy, string_view raw_query, DocumentStatus status) const;
+
+    template<typename Policy>
+    vector<Document> FindTopDocuments(Policy policy, string_view raw_query) const;
 
     template<typename DocumentPredicate>
     vector<Document> FindTopDocuments(string_view raw_query, DocumentPredicate document_predicate) const;
@@ -35,11 +44,14 @@ public:
 
     vector<Document> FindTopDocuments(string_view raw_query) const;
 
+
     int GetDocumentCount() const;
 
     tuple<vector<string_view>, DocumentStatus> MatchDocument(string_view raw_query, int document_id) const;
+
     tuple<vector<string_view>, DocumentStatus>
     MatchDocument(execution::sequenced_policy policy, string_view raw_query, int document_id) const;
+
     tuple<vector<string_view>, DocumentStatus>
     MatchDocument(execution::parallel_policy policy, string_view raw_query, int document_id) const;
 
@@ -125,18 +137,58 @@ vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentP
 
     auto matched_documents = FindAllDocuments(query, document_predicate);
 
-    sort(std::execution::par, matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-        if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
-            return lhs.rating > rhs.rating;
-        } else {
-            return lhs.relevance > rhs.relevance;
-        }
-    });
+    sort(std::execution::seq, matched_documents.begin(), matched_documents.end(),
+         [](const Document& lhs, const Document& rhs) {
+             if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                 return lhs.rating > rhs.rating;
+             } else {
+                 return lhs.relevance > rhs.relevance;
+             }
+         });
     if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
         matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
     }
 
     return matched_documents;
+}
+
+template<typename Policy, typename DocumentPredicate>
+vector<Document>
+SearchServer::FindTopDocuments(Policy policy, string_view raw_query, DocumentPredicate document_predicate) const {
+    const auto query = ParseQuery(raw_query);
+
+    if (!CorrectUseDashes(raw_query) || !IsValidWord(raw_query)) {
+        throw std::invalid_argument("invalid_argument"s);
+    }
+
+    auto matched_documents = FindAllDocuments(query, document_predicate);
+
+    sort(policy, matched_documents.begin(), matched_documents.end(),
+         [](const Document& lhs, const Document& rhs) {
+             if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                 return lhs.rating > rhs.rating;
+             } else {
+                 return lhs.relevance > rhs.relevance;
+             }
+         });
+    if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
+        matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+    }
+
+    return matched_documents;
+}
+
+template<typename Policy>
+vector<Document> SearchServer::FindTopDocuments(Policy policy, string_view raw_query, DocumentStatus status) const {
+    return FindTopDocuments(policy, raw_query,
+                            [status](int document_id, DocumentStatus document_status, int rating) {
+                                return document_status == status;
+                            });
+}
+
+template<typename Policy>
+vector<Document> SearchServer::FindTopDocuments(Policy policy, string_view raw_query) const {
+    return FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
 }
 
 template<typename DocumentPredicate>
@@ -180,7 +232,7 @@ void SearchServer::RemoveDocument(P policy, int document_id) {
 
     std::transform(policy, documents_to_words_freqs_.at(document_id).begin(),
                    documents_to_words_freqs_.at(document_id).end(), words_to_delete.begin(),
-                   [](const pair<const string_view , double>& word) {
+                   [](const pair<const string_view, double>& word) {
                        //auto* word_ref = const_cast<string*>(&word.first);
                        return word.first;
                    });

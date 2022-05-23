@@ -19,10 +19,10 @@ void SearchServer::AddDocument(int document_id, const string_view& document, Doc
 }
 
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentStatus status) const {
-    return SearchServer::FindTopDocuments(raw_query,
-                                          [status](int document_id, DocumentStatus document_status, int rating) {
-                                              return document_status == status;
-                                          });
+    return FindTopDocuments(raw_query,
+                            [status](int document_id, DocumentStatus document_status, int rating) {
+                                return document_status == status;
+                            });
 }
 
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query) const {
@@ -112,11 +112,12 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
 
     if (any_of(std::execution::par, query.minus_words.begin(), query.minus_words.end(),
                [this, document_id](string_view word) {
-                    string word_str = string(word);
+                   string word_str = string(word);
                    if (word_to_document_freqs_.count(word_str) == 0) {
                        return false;
                    }
-                   if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(), word_to_document_freqs_.at(word_str).end(),
+                   if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(),
+                                     word_to_document_freqs_.at(word_str).end(),
                                      [document_id](const pair<int, double>& ggg) {
                                          return ggg.first == document_id;
                                      })) {
@@ -137,7 +138,8 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
                   if (word_to_document_freqs_.count(word_str) == 0) {
                       return string_view{""};
                   }
-                  if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(), word_to_document_freqs_.at(word_str).end(),
+                  if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(),
+                                    word_to_document_freqs_.at(word_str).end(),
                                     [document_id](const pair<int, double>& ggg) {
                                         return ggg.first == document_id;
                                     })) {
