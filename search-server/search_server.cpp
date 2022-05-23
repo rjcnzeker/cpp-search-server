@@ -270,7 +270,7 @@ SearchServer::Query_for_par SearchServer::ParseQueryForPar(string_view text) con
 }
 
 // Existence required
-double SearchServer::ComputeWordInverseDocumentFreq(string_view word) const {
-    return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(string(word)).size());
+double SearchServer::ComputeWordInverseDocumentFreq(const string& word) const {
+    return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
 }
 

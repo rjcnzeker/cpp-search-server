@@ -111,10 +111,10 @@ private:
 
     Query_for_par ParseQueryForPar(string_view text) const;
 
-    double ComputeWordInverseDocumentFreq(string_view word) const;
+    double ComputeWordInverseDocumentFreq(const string& word) const;
 
-    template<typename DocumentPredicate>
-    vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
+    template<typename Policy, typename DocumentPredicate>
+    vector<Document> FindAllDocuments(Policy policy, const Query& query, DocumentPredicate document_predicate) const;
 
 };
 
@@ -135,13 +135,13 @@ vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentP
 template<typename Policy, typename DocumentPredicate>
 vector<Document>
 SearchServer::FindTopDocuments(Policy policy, string_view raw_query, DocumentPredicate document_predicate) const {
-    const auto query = ParseQuery(raw_query);
+    const Query query = ParseQuery(raw_query);
 
     if (!CorrectUseDashes(raw_query) || !IsValidWord(raw_query)) {
         throw std::invalid_argument("invalid_argument"s);
     }
 
-    auto matched_documents = FindAllDocuments(query, document_predicate);
+    auto matched_documents = FindAllDocuments(policy, query, document_predicate);
 
     sort(policy, matched_documents.begin(), matched_documents.end(),
          [](const Document& lhs, const Document& rhs) {
@@ -171,33 +171,34 @@ vector<Document> SearchServer::FindTopDocuments(Policy policy, string_view raw_q
     return FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
 }
 
-template<typename DocumentPredicate>
-vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
+template<typename Policy, typename DocumentPredicate>
+vector<Document>
+SearchServer::FindAllDocuments(Policy policy, const Query& query, DocumentPredicate document_predicate) const {
     map<int, double> document_to_relevance;
 
-    for (string_view word : query.plus_words) {
+    for_each(policy, query.plus_words.begin(), query.plus_words.end(), [this, &document_predicate, &document_to_relevance] (string_view word) {
         string word_str = string(word);
         if (word_to_document_freqs_.count(word_str) == 0) {
-            continue;
+            return ;
         }
-        const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
+        const double inverse_document_freq = ComputeWordInverseDocumentFreq(word_str);
         for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word_str)) {
             const auto& document_data = documents_.at(document_id);
             if (document_predicate(document_id, document_data.status, document_data.rating)) {
                 document_to_relevance[document_id] += term_freq * inverse_document_freq;
             }
         }
-    }
+    });
 
-    for (string_view word : query.minus_words) {
+    for_each(policy, query.minus_words.begin(), query.minus_words.end(), [this, &document_to_relevance](string_view word) {
         string word_str = string(word);
         if (word_to_document_freqs_.count(word_str) == 0) {
-            continue;
+            return ;
         }
         for (const auto [document_id, _] : word_to_document_freqs_.at(word_str)) {
             document_to_relevance.erase(document_id);
         }
-    }
+    });
 
     vector<Document> matched_documents;
     for (const auto [document_id, relevance] : document_to_relevance) {
@@ -205,6 +206,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
     }
     return matched_documents;
 }
+
 
 template<typename P>
 void SearchServer::RemoveDocument(P policy, int document_id) {
