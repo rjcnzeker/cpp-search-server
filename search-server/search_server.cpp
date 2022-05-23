@@ -19,14 +19,14 @@ void SearchServer::AddDocument(int document_id, const string_view& document, Doc
 }
 
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentStatus status) const {
-    return FindTopDocuments(raw_query,
+    return FindTopDocuments(std::execution::seq, raw_query,
                             [status](int document_id, DocumentStatus document_status, int rating) {
                                 return document_status == status;
                             });
 }
 
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query) const {
-    return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+    return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
 }
 
 int SearchServer::GetDocumentCount() const {
