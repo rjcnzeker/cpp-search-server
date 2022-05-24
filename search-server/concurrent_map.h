@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdlib>
 #include <map>
 #include <mutex>
@@ -8,7 +10,7 @@
 
 using namespace std::string_literals;
 
-template <typename Key, typename Value>
+template<typename Key, typename Value>
 class ConcurrentMap {
 private:
     struct Bucket {
@@ -24,18 +26,23 @@ public:
         Value& ref_to_value;
 
         Access(const Key& key, Bucket& bucket)
-            : guard(bucket.mutex)
-            , ref_to_value(bucket.map[key]) {
+                : guard(bucket.mutex), ref_to_value(bucket.map[key]) {
         }
     };
 
     explicit ConcurrentMap(size_t bucket_count)
-        : buckets_(bucket_count) {
+            : buckets_(bucket_count) {
     }
 
     Access operator[](const Key& key) {
         auto& bucket = buckets_[static_cast<uint64_t>(key) % buckets_.size()];
         return {key, bucket};
+    }
+
+    void erase(const Key& key) {
+        Bucket& bucket = buckets_[static_cast<uint64_t>(key) % buckets_.size()];
+        std::lock_guard lock(bucket.mutex);
+        bucket.map.erase(key);
     }
 
     std::map<Key, Value> BuildOrdinaryMap() {

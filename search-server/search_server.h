@@ -12,6 +12,7 @@
 
 #include "string_processing.h"
 #include "document.h"
+#include "concurrent_map.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -114,7 +115,7 @@ private:
     double ComputeWordInverseDocumentFreq(const string& word) const;
 
     template<typename Policy, typename DocumentPredicate>
-    vector<Document> FindAllDocuments(Policy policy, const Query& query, DocumentPredicate document_predicate) const;
+    vector<Document> FindAllDocuments(Policy policy, const Query_for_par& query, DocumentPredicate document_predicate) const;
 
 };
 
@@ -135,7 +136,21 @@ vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentP
 template<typename Policy, typename DocumentPredicate>
 vector<Document>
 SearchServer::FindTopDocuments(Policy policy, string_view raw_query, DocumentPredicate document_predicate) const {
-    const Query query = ParseQuery(raw_query);
+    Query_for_par query = ParseQueryForPar(raw_query);
+
+    set<string_view> plus_set(query.plus_words.begin(), query.plus_words.end());
+    set<string_view> minus_set(query.minus_words.begin(), query.minus_words.end());
+    query.plus_words.resize(0);
+    query.plus_words.reserve(plus_set.size());
+    for (auto plus_word : plus_set) {
+        query.plus_words.push_back(plus_word);
+    }
+    query.minus_words.resize(0);
+    query.minus_words.reserve(minus_set.size());
+    for (auto minus_word : minus_set) {
+        query.minus_words.push_back(minus_word);
+    }
+
 
     if (!CorrectUseDashes(raw_query) || !IsValidWord(raw_query)) {
         throw std::invalid_argument("invalid_argument"s);
@@ -173,10 +188,11 @@ vector<Document> SearchServer::FindTopDocuments(Policy policy, string_view raw_q
 
 template<typename Policy, typename DocumentPredicate>
 vector<Document>
-SearchServer::FindAllDocuments(Policy policy, const Query& query, DocumentPredicate document_predicate) const {
-    map<int, double> document_to_relevance;
+SearchServer::FindAllDocuments(Policy policy, const Query_for_par& query, DocumentPredicate document_predicate) const {
+   // map<int, double> document_to_relevance_CM;
+    ConcurrentMap<int, double> document_to_relevance_CM(1000);
 
-    for_each(policy, query.plus_words.begin(), query.plus_words.end(), [this, &document_predicate, &document_to_relevance] (string_view word) {
+    for_each(policy, query.plus_words.begin(), query.plus_words.end(), [this, &document_predicate, &document_to_relevance_CM, &query] (string_view word) {
         string word_str = string(word);
         if (word_to_document_freqs_.count(word_str) == 0) {
             return ;
@@ -185,24 +201,29 @@ SearchServer::FindAllDocuments(Policy policy, const Query& query, DocumentPredic
         for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word_str)) {
             const auto& document_data = documents_.at(document_id);
             if (document_predicate(document_id, document_data.status, document_data.rating)) {
-                document_to_relevance[document_id] += term_freq * inverse_document_freq;
+               // document_to_relevance_CM.BuildOrdinaryMap()[document_id] += term_freq * inverse_document_freq;
+                document_to_relevance_CM[document_id].ref_to_value += term_freq * inverse_document_freq;
             }
         }
     });
 
-    for_each(policy, query.minus_words.begin(), query.minus_words.end(), [this, &document_to_relevance](string_view word) {
+    for_each(policy, query.minus_words.begin(), query.minus_words.end(), [this, &document_to_relevance_CM](string_view word) {
         string word_str = string(word);
         if (word_to_document_freqs_.count(word_str) == 0) {
             return ;
         }
         for (const auto [document_id, _] : word_to_document_freqs_.at(word_str)) {
-            document_to_relevance.erase(document_id);
+            document_to_relevance_CM.erase(document_id);
         }
     });
 
+    map<int, double> document_to_relevance = document_to_relevance_CM.BuildOrdinaryMap();
+
     vector<Document> matched_documents;
+    matched_documents.reserve(document_to_relevance.size() + 1);
+
     for (const auto [document_id, relevance] : document_to_relevance) {
-        matched_documents.push_back({document_id, relevance, documents_.at(document_id).rating});
+        matched_documents.emplace_back(document_id, relevance, documents_.at(document_id).rating);
     }
     return matched_documents;
 }
