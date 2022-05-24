@@ -138,19 +138,10 @@ vector<Document>
 SearchServer::FindTopDocuments(Policy policy, string_view raw_query, DocumentPredicate document_predicate) const {
     Query_for_par query = ParseQueryForPar(raw_query);
 
-    set<string_view> plus_set(query.plus_words.begin(), query.plus_words.end());
-    set<string_view> minus_set(query.minus_words.begin(), query.minus_words.end());
-    query.plus_words.resize(0);
-    query.plus_words.reserve(plus_set.size());
-    for (auto plus_word : plus_set) {
-        query.plus_words.push_back(plus_word);
-    }
-    query.minus_words.resize(0);
-    query.minus_words.reserve(minus_set.size());
-    for (auto minus_word : minus_set) {
-        query.minus_words.push_back(minus_word);
-    }
-
+    auto last_plus = std::unique(policy, query.plus_words.begin(), query.plus_words.end());
+    query.plus_words.erase(last_plus, query.plus_words.end());
+    auto last_minus = std::unique(policy, query.minus_words.begin(), query.minus_words.end());
+    query.minus_words.erase(last_minus, query.minus_words.end());
 
     if (!CorrectUseDashes(raw_query) || !IsValidWord(raw_query)) {
         throw std::invalid_argument("invalid_argument"s);
