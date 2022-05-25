@@ -116,11 +116,7 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
                    if (word_to_document_freqs_.count(word_str) == 0) {
                        return false;
                    }
-                   if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(),
-                                     word_to_document_freqs_.at(word_str).end(),
-                                     [document_id](const pair<int, double>& ggg) {
-                                         return ggg.first == document_id;
-                                     })) {
+                   if (IsWordInDocument(document_id, word_str)) {
                        return true;
                    }
                    return false;
@@ -138,11 +134,7 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
                   if (word_to_document_freqs_.count(word_str) == 0) {
                       return string_view{""};
                   }
-                  if (std::count_if(std::execution::par, word_to_document_freqs_.at(word_str).begin(),
-                                    word_to_document_freqs_.at(word_str).end(),
-                                    [document_id](const pair<int, double>& ggg) {
-                                        return ggg.first == document_id;
-                                    })) {
+                  if (IsWordInDocument(document_id, word_str)) {
                       return word;
                   }
                   return string_view{""};
@@ -152,11 +144,19 @@ SearchServer::MatchDocument(std::execution::parallel_policy policy, string_view 
     auto last = std::unique(std::execution::par, matched_words.begin(), matched_words.end());
     matched_words.erase(last, matched_words.end());
 
-    if (*matched_words.begin() == "") {
+    if (matched_words.begin()->size()) {
         matched_words.erase(matched_words.begin());
     }
 
     return {matched_words, documents_.at(document_id).status};
+}
+
+bool SearchServer::IsWordInDocument(int document_id, const string& word) const {
+    return count_if(std::execution::par, word_to_document_freqs_.at(word).begin(),
+                    word_to_document_freqs_.at(word).end(),
+                    [document_id](const pair<int, double>& ggg) {
+                                            return ggg.first == document_id;
+                                        });
 }
 
 const map<string_view, double>& SearchServer::GetWordFrequencies(int document_id) const {
@@ -223,10 +223,7 @@ int SearchServer::ComputeAverageRating(const vector<int>& ratings) {
     if (ratings.empty()) {
         return 0;
     }
-    int rating_sum = 0;
-    for (const int rating : ratings) {
-        rating_sum += rating;
-    }
+    int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
     return rating_sum / static_cast<int>(ratings.size());
 }
 
@@ -239,6 +236,7 @@ SearchServer::QueryWord SearchServer::ParseQueryWord(string_view text) const {
     return {text, is_minus, IsStopWord(text)};
 }
 
+// Метод используется для непараллельного метода MatchDocument и возвращает set в отличие от ParseQueryForPar
 SearchServer::Query SearchServer::ParseQuery(string_view text) const {
     Query result;
     for (string_view word : SplitIntoWords(text)) {

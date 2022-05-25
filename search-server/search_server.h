@@ -15,6 +15,7 @@
 #include "concurrent_map.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const int RELEVANCE_ERROR_RATE = 1e-6;
 
 class SearchServer {
 public:
@@ -117,6 +118,7 @@ private:
     template<typename Policy, typename DocumentPredicate>
     vector<Document> FindAllDocuments(Policy policy, const Query_for_par& query, DocumentPredicate document_predicate) const;
 
+    bool IsWordInDocument(int document_id, const string& word) const;
 };
 
 template<typename StringContainer>
@@ -151,7 +153,7 @@ SearchServer::FindTopDocuments(Policy policy, string_view raw_query, DocumentPre
 
     sort(policy, matched_documents.begin(), matched_documents.end(),
          [](const Document& lhs, const Document& rhs) {
-             if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+             if (abs(lhs.relevance - rhs.relevance) < RELEVANCE_ERROR_RATE) {
                  return lhs.rating > rhs.rating;
              } else {
                  return lhs.relevance > rhs.relevance;
@@ -180,10 +182,9 @@ vector<Document> SearchServer::FindTopDocuments(Policy policy, string_view raw_q
 template<typename Policy, typename DocumentPredicate>
 vector<Document>
 SearchServer::FindAllDocuments(Policy policy, const Query_for_par& query, DocumentPredicate document_predicate) const {
-   // map<int, double> document_to_relevance_CM;
-    ConcurrentMap<int, double> document_to_relevance_CM(1000);
+    ConcurrentMap<int, double> document_to_relevance_concurrent(1000);
 
-    for_each(policy, query.plus_words.begin(), query.plus_words.end(), [this, &document_predicate, &document_to_relevance_CM, &query] (string_view word) {
+    for_each(policy, query.plus_words.begin(), query.plus_words.end(), [this, &document_predicate, &document_to_relevance_concurrent, &query] (string_view word) {
         string word_str = string(word);
         if (word_to_document_freqs_.count(word_str) == 0) {
             return ;
@@ -192,23 +193,23 @@ SearchServer::FindAllDocuments(Policy policy, const Query_for_par& query, Docume
         for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word_str)) {
             const auto& document_data = documents_.at(document_id);
             if (document_predicate(document_id, document_data.status, document_data.rating)) {
-               // document_to_relevance_CM.BuildOrdinaryMap()[document_id] += term_freq * inverse_document_freq;
-                document_to_relevance_CM[document_id].ref_to_value += term_freq * inverse_document_freq;
+               // document_to_relevance_concurrent.BuildOrdinaryMap()[document_id] += term_freq * inverse_document_freq;
+                document_to_relevance_concurrent[document_id].ref_to_value += term_freq * inverse_document_freq;
             }
         }
     });
 
-    for_each(policy, query.minus_words.begin(), query.minus_words.end(), [this, &document_to_relevance_CM](string_view word) {
+    for_each(policy, query.minus_words.begin(), query.minus_words.end(), [this, &document_to_relevance_concurrent](string_view word) {
         string word_str = string(word);
         if (word_to_document_freqs_.count(word_str) == 0) {
             return ;
         }
         for (const auto [document_id, _] : word_to_document_freqs_.at(word_str)) {
-            document_to_relevance_CM.erase(document_id);
+            document_to_relevance_concurrent.erase(document_id);
         }
     });
 
-    map<int, double> document_to_relevance = document_to_relevance_CM.BuildOrdinaryMap();
+    map<int, double> document_to_relevance = document_to_relevance_concurrent.BuildOrdinaryMap();
 
     vector<Document> matched_documents;
     matched_documents.reserve(document_to_relevance.size() + 1);
